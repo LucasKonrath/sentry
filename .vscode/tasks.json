@@ -1,0 +1,15 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Run PR Coverage Analyzer",
+			"type": "shell",
+			"command": "${workspaceFolder}/.venv/bin/python src/main.py --repo-url 'https://github.com/example/repo' --pr-number 123",
+			"isBackground": false,
+			"problemMatcher": [
+				"$eslint-stylish"
+			],
+			"group": "build"
+		}
+	]
+}
