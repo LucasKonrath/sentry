@@ -17,11 +17,11 @@ import click
 from rich.console import Console
 from rich.logging import RichHandler
 
-from analyzers.coverage_analyzer import CoverageAnalyzer
-from analyzers.code_analyzer import CodeAnalyzer
-from generators.test_generator import TestGenerator
-from github.pr_manager import PRManager
-from utils.config import Config
+from .analyzers.coverage_analyzer import CoverageAnalyzer
+from .analyzers.code_analyzer import CodeAnalyzer
+from .generators.test_generator import TestGenerator
+from .github_integration.pr_manager import PRManager
+from .utils.config import Config
 
 # Load environment variables
 load_dotenv()
