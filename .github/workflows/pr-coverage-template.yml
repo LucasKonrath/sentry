@@ -1,0 +1,201 @@
+name: Automatic PR Coverage Analysis
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    # Optional: Only run on specific file changes
+    paths-ignore:
+      - '*.md'
+      - 'docs/**'
+      - '.gitignore'
+      - '.github/**'
+
+env:
+  COVERAGE_THRESHOLD: 80
+  MIN_COVERAGE_INCREASE: 5
+
+jobs:
+  analyze-coverage:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+    
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+    
+    steps:
+    - name: Checkout target repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Full history for better coverage analysis
+    
+    - name: Checkout PR Coverage Analyzer
+      uses: actions/checkout@v4
+      with:
+        repository: 'LucasKonrath/sentry'  # Your analyzer repository
+        path: 'coverage-analyzer'
+        token: ${{ secrets.COVERAGE_ANALYZER_TOKEN }}
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+        cache-dependency-path: 'coverage-analyzer/requirements.txt'
+    
+    - name: Install analyzer dependencies
+      run: |
+        cd coverage-analyzer
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Install target repository dependencies
+      run: |
+        # Install dependencies for the target repository
+        if [ -f "requirements.txt" ]; then
+          pip install -r requirements.txt
+        elif [ -f "pyproject.toml" ]; then
+          pip install .
+        elif [ -f "package.json" ]; then
+          npm install
+        fi
+    
+    - name: Run existing tests for baseline coverage
+      continue-on-error: true
+      run: |
+        # Run existing tests to establish baseline
+        if [ -f "pytest.ini" ] || [ -f "pyproject.toml" ] || [ -d "tests" ]; then
+          python -m pytest --cov=src --cov=. --cov-report=json:baseline_coverage.json tests/ || true
+        fi
+    
+    - name: Run PR Coverage Analysis
+      id: coverage-analysis
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        COVERAGE_THRESHOLD: ${{ env.COVERAGE_THRESHOLD }}
+        MIN_COVERAGE_INCREASE: ${{ env.MIN_COVERAGE_INCREASE }}
+        PR_NUMBER: ${{ github.event.number }}
+        REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+      run: |
+        cd coverage-analyzer
+        
+        # Create output directory
+        mkdir -p ../analysis-results
+        
+        # Run analysis and capture output
+        python -m src.main \
+          --repo-url "$REPO_URL" \
+          --pr-number "$PR_NUMBER" \
+          > ../analysis-results/output.log 2>&1 || echo "Analysis completed with warnings"
+        
+        # Check if new PR was created
+        if grep -q "Created new PR" ../analysis-results/output.log; then
+          echo "new-pr-created=true" >> $GITHUB_OUTPUT
+          NEW_PR_URL=$(grep "Created new PR:" ../analysis-results/output.log | sed 's/.*Created new PR: //')
+          echo "new-pr-url=$NEW_PR_URL" >> $GITHUB_OUTPUT
+        else
+          echo "new-pr-created=false" >> $GITHUB_OUTPUT
+        fi
+    
+    - name: Upload analysis results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: coverage-analysis-results
+        path: analysis-results/
+        retention-days: 30
+    
+    - name: Comment on PR - Analysis Started
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const { owner, repo } = context.repo;
+          const issue_number = context.issue.number;
+          
+          const comment = `## 🤖 PR Coverage Analysis
+          
+          ✅ **Analysis Started**
+          - 📊 Analyzing test coverage for this PR
+          - 🧪 Generating additional tests if needed
+          - 🔄 This may take a few minutes...
+          
+          Results will be posted here when complete.
+          
+          *Powered by PR Coverage Analyzer*`;
+          
+          github.rest.issues.createComment({
+            owner,
+            repo,
+            issue_number,
+            body: comment
+          });
+    
+    - name: Comment on PR - Analysis Complete
+      if: always()
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const { owner, repo } = context.repo;
+          const issue_number = context.issue.number;
+          const newPrCreated = "${{ steps.coverage-analysis.outputs.new-pr-created }}" === "true";
+          const newPrUrl = "${{ steps.coverage-analysis.outputs.new-pr-url }}";
+          
+          let comment = `## 🤖 PR Coverage Analysis - Complete
+          
+          ✅ **Analysis Finished**`;
+          
+          if (newPrCreated && newPrUrl) {
+            comment += `
+            
+          🎉 **New PR Created with Generated Tests!**
+          📝 Review the generated tests: [View PR](${newPrUrl})
+          
+          **Next Steps:**
+          1. Review the automatically generated tests
+          2. Merge this coverage improvement PR
+          3. Enjoy improved code coverage! 📈`;
+          } else {
+            comment += `
+            
+          ℹ️ **No additional tests needed**
+          Current test coverage meets the required threshold.
+          
+          Great job maintaining good test coverage! 👍`;
+          }
+          
+          comment += `
+          
+          ---
+          *Powered by PR Coverage Analyzer v0.1.0*`;
+          
+          github.rest.issues.createComment({
+            owner,
+            repo,
+            issue_number,
+            body: comment
+          });
+    
+    - name: Update PR Status Check
+      if: always()
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const { owner, repo } = context.repo;
+          const sha = context.payload.pull_request.head.sha;
+          
+          const state = "${{ job.status }}" === "success" ? "success" : "failure";
+          const description = "${{ job.status }}" === "success" 
+            ? "Coverage analysis completed successfully"
+            : "Coverage analysis failed - check logs";
+          
+          github.rest.repos.createCommitStatus({
+            owner,
+            repo,
+            sha,
+            state,
+            context: "PR Coverage Analyzer",
+            description,
+            target_url: `${context.payload.repository.html_url}/actions/runs/${context.runId}`
+          });

@@ -15,7 +15,10 @@ class TestGenerator:
     
     def __init__(self, config):
         self.config = config
-        self.openai_client = openai.OpenAI(api_key=config.openai_api_key)
+        if config.openai_api_key:
+            self.openai_client = openai.OpenAI(api_key=config.openai_api_key)
+        else:
+            self.openai_client = None
         self.model = config.llm_model
         self.max_tokens = config.max_tokens
         self.temperature = config.temperature
@@ -30,6 +33,10 @@ class TestGenerator:
         Returns:
             List of generated test information and code
         """
+        if not self.openai_client:
+            logger.error("OpenAI client not configured - cannot generate tests")
+            return []
+            
         generated_tests = []
         
         for area in uncovered_areas:

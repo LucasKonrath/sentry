@@ -12,13 +12,13 @@ class Config(BaseSettings):
     """Application configuration using Pydantic for validation."""
     
     # GitHub Settings
-    github_token: str = Field(..., env="GITHUB_TOKEN")
+    github_token: str = Field("", env="GITHUB_TOKEN")
     default_branch: str = Field("main", env="DEFAULT_BRANCH")
     pr_branch_prefix: str = Field("auto-tests/", env="PR_BRANCH_PREFIX")
     pr_title_prefix: str = Field("[Auto] Add unit tests to improve coverage", env="PR_TITLE_PREFIX")
     
     # OpenAI/LLM Settings
-    openai_api_key: str = Field(..., env="OPENAI_API_KEY")
+    openai_api_key: str = Field("", env="OPENAI_API_KEY")
     llm_model: str = Field("gpt-4", env="LLM_MODEL")
     max_tokens: int = Field(4000, env="MAX_TOKENS")
     temperature: float = Field(0.2, env="TEMPERATURE")

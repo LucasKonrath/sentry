@@ -1,0 +1,60 @@
+# Target Repository Configuration
+# Configure which repositories should be monitored for PR coverage analysis
+
+repositories:
+  # Example repository configurations
+  - owner: myorg
+    name: backend-api
+    settings:
+      coverage_threshold: 85
+      min_coverage_increase: 8
+      languages: 
+        - python
+        - javascript
+      exclude_paths:
+        - docs/
+        - scripts/
+        - tests/fixtures/
+      
+  - owner: myorg  
+    name: frontend-app
+    settings:
+      coverage_threshold: 75
+      min_coverage_increase: 5
+      languages:
+        - typescript
+        - javascript
+        - jsx
+      exclude_paths:
+        - public/
+        - stories/
+        - __mocks__/
+        
+  - owner: anotherorg
+    name: microservice
+    settings:
+      coverage_threshold: 90
+      min_coverage_increase: 3
+      languages:
+        - java
+      exclude_paths:
+        - target/
+        - docs/
+
+# Global settings (applied when repo-specific settings not available)
+global_settings:
+  coverage_threshold: 80
+  min_coverage_increase: 5
+  languages:
+    - python
+    - javascript
+    - typescript
+    - java
+    - go
+  exclude_patterns:
+    - "*.md"
+    - "*.txt"
+    - ".git*"
+    - "node_modules/"
+    - "__pycache__/"
+    - "*.pyc"

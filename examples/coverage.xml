@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Sample Cobertura XML coverage report -->
+<coverage line-rate="0.7854" branch-rate="0.6429" lines-covered="109" lines-valid="139" 
+          branches-covered="18" branches-valid="28" complexity="0" version="1.0" timestamp="1640995200000">
+  <sources>
+    <source>src/main/java</source>
+    <source>src/test/java</source>
+  </sources>
+  <packages>
+    <package name="com.example.calculator" line-rate="0.8571" branch-rate="0.75" complexity="0">
+      <classes>
+        <class name="com.example.calculator.Calculator" filename="src/main/java/com/example/calculator/Calculator.java" 
+               line-rate="0.8571" branch-rate="0.75" complexity="0">
+          <methods>
+            <method name="&lt;init&gt;" signature="()V" line-rate="1.0" branch-rate="1.0" complexity="1">
+              <lines>
+                <line number="8" hits="3" branch="false"/>
+              </lines>
+            </method>
+            <method name="add" signature="(II)I" line-rate="1.0" branch-rate="1.0" complexity="1">
+              <lines>
+                <line number="12" hits="5" branch="false"/>
+              </lines>
+            </method>
+            <method name="subtract" signature="(II)I" line-rate="1.0" branch-rate="1.0" complexity="1">
+              <lines>
+                <line number="16" hits="3" branch="false"/>
+              </lines>
+            </method>
+            <method name="multiply" signature="(II)I" line-rate="1.0" branch-rate="1.0" complexity="1">
+              <lines>
+                <line number="20" hits="2" branch="false"/>
+              </lines>
+            </method>
+            <method name="divide" signature="(II)D" line-rate="0.6667" branch-rate="0.5" complexity="2">
+              <lines>
+                <line number="25" hits="4" branch="true" condition-coverage="50% (1/2)">
+                  <conditions>
+                    <condition number="0" type="jump" coverage="50%"/>
+                  </conditions>
+                </line>
+                <line number="26" hits="0" branch="false"/>
+                <line number="28" hits="4" branch="false"/>
+              </lines>
+            </method>
+            <method name="factorial" signature="(I)J" line-rate="0.75" branch-rate="0.75" complexity="3">
+              <lines>
+                <line number="33" hits="2" branch="true" condition-coverage="100% (2/2)">
+                  <conditions>
+                    <condition number="0" type="jump" coverage="100%"/>
+                  </conditions>
+                </line>
+                <line number="34" hits="1" branch="false"/>
+                <line number="36" hits="0" branch="false"/>
+                <line number="37" hits="1" branch="false"/>
+              </lines>
+            </method>
+          </methods>
+          <lines>
+            <line number="8" hits="3" branch="false"/>
+            <line number="12" hits="5" branch="false"/>
+            <line number="16" hits="3" branch="false"/>
+            <line number="20" hits="2" branch="false"/>
+            <line number="25" hits="4" branch="true" condition-coverage="50% (1/2)"/>
+            <line number="26" hits="0" branch="false"/>
+            <line number="28" hits="4" branch="false"/>
+            <line number="33" hits="2" branch="true" condition-coverage="100% (2/2)"/>
+            <line number="34" hits="1" branch="false"/>
+            <line number="36" hits="0" branch="false"/>
+            <line number="37" hits="1" branch="false"/>
+          </lines>
+        </class>
+      </classes>
+    </package>
+    <package name="com.example.utils" line-rate="0.6" branch-rate="0.4" complexity="0">
+      <classes>
+        <class name="com.example.utils.StringUtils" filename="src/main/java/com/example/utils/StringUtils.java" 
+               line-rate="0.6" branch-rate="0.4" complexity="0">
+          <methods>
+            <method name="isEmpty" signature="(Ljava/lang/String;)Z" line-rate="0.6667" branch-rate="0.5" complexity="2">
+              <lines>
+                <line number="10" hits="3" branch="true" condition-coverage="50% (1/2)"/>
+                <line number="11" hits="0" branch="false"/>
+                <line number="13" hits="3" branch="false"/>
+              </lines>
+            </method>
+            <method name="capitalize" signature="(Ljava/lang/String;)Ljava/lang/String;" line-rate="0.5" branch-rate="0.25" complexity="3">
+              <lines>
+                <line number="18" hits="2" branch="true" condition-coverage="50% (1/2)"/>
+                <line number="19" hits="0" branch="false"/>
+                <line number="21" hits="0" branch="true" condition-coverage="0% (0/2)"/>
+                <line number="22" hits="0" branch="false"/>
+                <line number="24" hits="2" branch="false"/>
+              </lines>
+            </method>
+          </methods>
+          <lines>
+            <line number="10" hits="3" branch="true" condition-coverage="50% (1/2)"/>
+            <line number="11" hits="0" branch="false"/>
+            <line number="13" hits="3" branch="false"/>
+            <line number="18" hits="2" branch="true" condition-coverage="50% (1/2)"/>
+            <line number="19" hits="0" branch="false"/>
+            <line number="21" hits="0" branch="true" condition-coverage="0% (0/2)"/>
+            <line number="22" hits="0" branch="false"/>
+            <line number="24" hits="2" branch="false"/>
+          </lines>
+        </class>
+      </classes>
+    </package>
+  </packages>
+</coverage>
