@@ -2,7 +2,7 @@
 	"version": "2.0.0",
 	"tasks": [
 		{
-			"label": "Run PR Coverage Analyzer",
+			"label": "Run PR Coverage Analyzer (Python)",
 			"type": "shell",
 			"command": "${workspaceFolder}/.venv/bin/python src/main.py --repo-url 'https://github.com/example/repo' --pr-number 123",
 			"isBackground": false,
@@ -10,6 +10,74 @@
 				"$eslint-stylish"
 			],
 			"group": "build"
+		},
+		{
+			"label": "Build & Analyze Java Project",
+			"type": "shell",
+			"command": "./build.sh --repo-url 'https://github.com/example/java-repo' --pr-number 123",
+			"isBackground": false,
+			"problemMatcher": [
+				"$gcc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Build & Analyze JavaScript Project", 
+			"type": "shell",
+			"command": "./build.sh --repo-url 'https://github.com/example/js-repo' --pr-number 123",
+			"isBackground": false,
+			"problemMatcher": [
+				"$eslint-stylish"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Build & Analyze .NET Project",
+			"type": "shell",
+			"command": "./build.sh --repo-url 'https://github.com/example/dotnet-repo' --pr-number 123",
+			"isBackground": false,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Auto-Detect & Build Any Project",
+			"type": "shell",
+			"command": "./build.sh --repo-url '${input:repoUrl}' --pr-number '${input:prNumber}'",
+			"isBackground": false,
+			"problemMatcher": [
+				"$gcc",
+				"$eslint-stylish", 
+				"$msCompile"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Build Only (No Analysis)",
+			"type": "shell",
+			"command": "./build.sh --build-only",
+			"isBackground": false,
+			"problemMatcher": [
+				"$gcc",
+				"$eslint-stylish",
+				"$msCompile" 
+			],
+			"group": "build"
+		}
+	],
+	"inputs": [
+		{
+			"id": "repoUrl",
+			"description": "GitHub repository URL",
+			"default": "https://github.com/example/repo",
+			"type": "promptString"
+		},
+		{
+			"id": "prNumber", 
+			"description": "Pull request number",
+			"default": "123",
+			"type": "promptString"
 		}
 	]
 }
