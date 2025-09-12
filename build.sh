@@ -58,9 +58,11 @@ build_java() {
         # Build with coverage
         mvn clean compile test jacoco:report
         
-        # Convert JaCoCo to Cobertura if needed
-        if [[ ! -f "target/site/cobertura/coverage.xml" && -f "target/site/jacoco/jacoco.xml" ]]; then
-            mvn jacoco:report-aggregate cobertura:cobertura
+        # Check if JaCoCo coverage report was generated
+        if [[ -f "target/site/jacoco/jacoco.xml" ]]; then
+            echo -e "${GREEN}✅ Generated JaCoCo coverage report: target/site/jacoco/jacoco.xml${NC}"
+        else
+            echo -e "${YELLOW}⚠️  Warning: JaCoCo coverage report not found${NC}"
         fi
         
     elif [[ -f "build.gradle" || -f "build.gradle.kts" ]]; then
