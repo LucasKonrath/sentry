@@ -113,7 +113,6 @@ class PRCoverageAnalyzer:
             }
 
 
-
 @click.command()
 @click.option('--repo-url', required=True, help='GitHub repository URL')
 @click.option('--pr-number', required=True, type=int, help='Pull request number')
