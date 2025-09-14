@@ -36,6 +36,7 @@ class Config(BaseSettings):
     min_coverage_increase: int = Field(5, env="MIN_COVERAGE_INCREASE")
     
     # Analysis Settings
+    source_root: str = Field("src", env="SOURCE_ROOT")
     supported_languages: List[str] = Field(
         ["python", "javascript", "typescript", "java"], 
         env="SUPPORTED_LANGUAGES"

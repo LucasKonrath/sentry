@@ -38,7 +38,7 @@ class CodeAnalyzer:
         low_coverage_files = coverage_report.get("low_coverage_areas", [])
         
         # Analyze all files in the target project (for external project analysis)
-        source_root = os.environ.get('SOURCE_ROOT', 'src')
+        source_root = self.config.source_root
         logger.info(f"Using SOURCE_ROOT: {source_root}")
         
         for coverage_area in low_coverage_files:
