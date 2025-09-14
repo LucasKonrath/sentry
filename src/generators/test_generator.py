@@ -213,6 +213,12 @@ Format your response as a JSON object with:
 """
         return prompt
     
+    def _extract_class_name(self, code: str) -> str:
+        """Extract class name from Java code."""
+        import re
+        match = re.search(r'class\s+(\w+)', code)
+        return match.group(1) if match else "TestClass"
+    
     def _get_testing_framework(self, language: str) -> str:
         """Get the appropriate testing framework for the language."""
         frameworks = {
@@ -284,11 +290,12 @@ Always return valid JSON format as requested.
             # Fix common JSON issues
             import re
             
-            # Fix missing colon after field names (specific Claude issue)
-            content = re.sub(r'("test_code")(\s*")', r'\1:\2', content)
-            content = re.sub(r'("test_file_path")(\s*")', r'\1:\2', content)
-            content = re.sub(r'("test_class_name")(\s*")', r'\1:\2', content)
-            content = re.sub(r'("imports")(\s*\[)', r'\1:\2', content)
+            # Fix the specific Claude JSON issue: "test_code""package... 
+            # Replace with: "test_code": "package...
+            content = re.sub(r'("test_code")(")', r'\1: \2', content)
+            
+            # More general fix for missing colons between field and value
+            content = re.sub(r'("\w+")(\s*)("[^"]*")', r'\1:\2\3', content)
             
             # Fix triple-quoted strings for JSON compatibility
             # This handles the specific case where Claude generates: "test_code": """code here"""
@@ -333,7 +340,43 @@ Always return valid JSON format as requested.
         except json.JSONDecodeError as e:
             logger.error(f"Error parsing JSON response: {str(e)}")
             logger.error(f"Problematic JSON content: {content[:500]}...")
-            # Fallback: try to extract code between triple backticks
+            
+            # Try one more aggressive fix for the specific Claude issue
+            try:
+                # Extract the test file path and code separately
+                file_path_match = re.search(r'"test_file_path":\s*"([^"]*)"', content)
+                
+                # Find the test code after "test_code" even if malformed
+                code_match = re.search(r'"test_code"[:"]*\s*([^}]+)$', content, re.DOTALL)
+                
+                if file_path_match and code_match:
+                    test_file_path = file_path_match.group(1)
+                    test_code = code_match.group(1).strip()
+                    
+                    # Clean up the extracted code
+                    if test_code.startswith('"'):
+                        test_code = test_code[1:]
+                    if test_code.endswith('"'):
+                        test_code = test_code[:-1]
+                    
+                    # Unescape newlines
+                    test_code = test_code.replace('\\n', '\n')
+                    
+                    logger.info("Successfully extracted test content using fallback parsing")
+                    
+                    return {
+                        "test_file_path": test_file_path,
+                        "test_code": test_code,
+                        "test_class_name": self._extract_class_name(test_code),
+                        "test_methods": [],
+                        "imports": [],
+                        "setup_code": "",
+                        "explanation": "Generated Java unit test"
+                    }
+            except Exception as fallback_error:
+                logger.error(f"Fallback parsing also failed: {str(fallback_error)}")
+            
+            # Final fallback: try to extract code between triple backticks
             return self._fallback_parse_response(response_content, function_info)
         
         except Exception as e:
