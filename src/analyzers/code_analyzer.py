@@ -75,6 +75,7 @@ class CodeAnalyzer:
                         "docstring": func_info.get("docstring", ""),
                         "complexity": func_info.get("complexity", "medium"),
                         "dependencies": func_info.get("dependencies", []),
+                        "language": file_analysis.get("language", "unknown"),
                         "missing_lines": [
                             line for line in missing_lines 
                             if func_info["line_start"] <= line <= func_info["line_end"]

@@ -181,10 +181,10 @@ I need you to generate comprehensive unit tests for the following {language} fun
 1. Generate comprehensive unit tests that cover ALL the missing lines: {function_info['missing_lines']}
 2. Include tests for edge cases, error conditions, and normal flow
 3. Use appropriate mocking for external dependencies: {function_info.get('dependencies', [])}
-4. Follow {language} testing best practices (pytest for Python)
+4. Follow {language} testing best practices ({self._get_testing_framework(language)})
 5. Include setup and teardown if needed
 6. Add clear, descriptive test method names
-7. Include docstrings for test methods
+7. Include proper documentation/comments for test methods
 
 **Test Coverage Goals:**
 - Test all execution paths
@@ -213,6 +213,16 @@ Format your response as a JSON object with:
 """
         return prompt
     
+    def _get_testing_framework(self, language: str) -> str:
+        """Get the appropriate testing framework for the language."""
+        frameworks = {
+            "python": "pytest with unittest.mock",
+            "java": "JUnit 5 with Mockito",
+            "javascript": "Jest or Mocha",
+            "typescript": "Jest with TypeScript"
+        }
+        return frameworks.get(language.lower(), f"{language} testing framework")
+    
     def _get_system_prompt(self, language: str) -> str:
         """Get system prompt for test generation."""
         
@@ -232,9 +242,27 @@ Key principles:
 
 Always return valid JSON format as requested.
 """
+        elif language.lower() == "java":
+            return """
+You are an expert Java developer and test engineer. Your task is to generate high-quality, comprehensive unit tests using JUnit 5 that will improve code coverage for the given function.
+
+Key principles:
+1. Use JUnit 5 framework (@Test, @BeforeEach, @AfterEach, etc.)
+2. Use Mockito for mocking dependencies when needed
+3. Follow Java naming conventions (camelCase for methods)
+4. Use proper assertions (assertEquals, assertTrue, assertThrows, etc.)
+5. Cover edge cases, error conditions, and normal flow
+6. Include setup (@BeforeEach) and cleanup (@AfterEach) methods if needed
+7. Use descriptive test method names that explain what is being tested
+8. Generate tests that will actually execute the missing lines of code
+9. Use proper Java imports (org.junit.jupiter.api.*, org.mockito.*, etc.)
+10. Create proper test class structure with appropriate access modifiers
+
+Always return valid JSON format as requested.
+"""
         else:
             return f"""
-You are an expert {language} developer and test engineer. Generate comprehensive unit tests for the given function following {language} testing best practices.
+You are an expert {language} developer and test engineer. Generate comprehensive unit tests for the given function following {language} testing best practices and appropriate testing frameworks.
 
 Focus on covering all the specified missing lines and creating robust, maintainable tests.
 
@@ -257,15 +285,21 @@ Always return valid JSON format as requested.
             import re
             
             # Fix triple-quoted strings for JSON compatibility
-            content = re.sub(r'"""\s*\n(.*?)\n\s*"""', lambda m: json.dumps(m.group(1)), content, flags=re.DOTALL)
+            # This handles the specific case where Claude generates: "test_code": """code here"""
+            def fix_triple_quotes(match):
+                # Extract the content inside triple quotes
+                raw_content = match.group(1)
+                # Properly escape it for JSON
+                return json.dumps(raw_content)
+            
+            content = re.sub(r':\s*"""\s*(.*?)\s*"""', fix_triple_quotes, content, flags=re.DOTALL)
             
             # Fix trailing commas (common LLM issue)
             content = re.sub(r',\s*}', '}', content)
             content = re.sub(r',\s*]', ']', content)
             
-            # Fix single quotes to double quotes
+            # Fix single quotes to double quotes (but be careful not to break strings)
             content = re.sub(r"'([^']*)':", r'"\1":', content)
-            content = re.sub(r":\s*'([^']*)'", r': "\1"', content)
             
             # Try to clean up any remaining formatting issues
             content = content.strip()
