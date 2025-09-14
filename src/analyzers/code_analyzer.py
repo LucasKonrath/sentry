@@ -37,14 +37,10 @@ class CodeAnalyzer:
         uncovered_areas = []
         low_coverage_files = coverage_report.get("low_coverage_areas", [])
         
-        # Only analyze files inside the target project source directory
-        project_src_dir = os.path.abspath("src")
+        # Analyze all files in the target project (for external project analysis)
         for coverage_area in low_coverage_files:
             file_path = os.path.abspath(coverage_area["file"])
-            # Skip files not inside the project src directory
-            if not file_path.startswith(project_src_dir):
-                logger.info(f"Skipping non-project file: {file_path}")
-                continue
+            logger.info(f"Analyzing file: {file_path}")
             missing_lines = coverage_area.get("missing_lines", [])
 
             # Analyze the file structure
