@@ -32,10 +32,27 @@ class CoverageAnalyzer:
                     filename = sourcefile.get('name')
                     missed = 0
                     covered = 0
-                    for counter in sourcefile.findall('counter'):
-                        if counter.get('type') == 'LINE':
-                            missed += int(counter.get('missed'))
-                            covered += int(counter.get('covered'))
+                    missing_lines = []
+                    covered_lines = []
+                    
+                    # Extract line-level coverage information
+                    for line in sourcefile.findall('line'):
+                        line_num = int(line.get('nr'))
+                        hits = int(line.get('ci', 0))  # covered instructions
+                        if hits > 0:
+                            covered += 1
+                            covered_lines.append(line_num)
+                        else:
+                            missed += 1
+                            missing_lines.append(line_num)
+                    
+                    # Fallback to counter if no line elements
+                    if missed == 0 and covered == 0:
+                        for counter in sourcefile.findall('counter'):
+                            if counter.get('type') == 'LINE':
+                                missed += int(counter.get('missed'))
+                                covered += int(counter.get('covered'))
+                    
                     total_missed += missed
                     total_covered += covered
                     total_lines = missed + covered
@@ -44,7 +61,9 @@ class CoverageAnalyzer:
                         'missed': missed,
                         'covered': covered,
                         'total': total_lines,
-                        'percent_covered': percent_covered
+                        'percent_covered': percent_covered,
+                        'missing_lines': missing_lines,
+                        'covered_lines': covered_lines
                     }
             overall_total = total_missed + total_covered
             overall_coverage = (total_covered / overall_total * 100) if overall_total > 0 else 0
@@ -380,6 +399,13 @@ show_missing = true
         
         try:
             if file_path.suffix.lower() == '.xml':
+                # Check if this is a JaCoCo-generated Cobertura file by looking at the path
+                if 'jacoco' in str(file_path).lower() or 'cobertura.xml' in str(file_path):
+                    logger.info("Detected JaCoCo-generated file, trying JaCoCo parser first")
+                    jacoco_result = self._parse_jacoco_xml(str(file_path))
+                    if jacoco_result and jacoco_result.get('file_coverage'):
+                        return jacoco_result
+                
                 # Try Cobertura XML format
                 logger.info("Parsing as Cobertura XML format")
                 cobertura_data = self.cobertura_parser.parse_coverage_file(str(file_path))
@@ -387,7 +413,7 @@ show_missing = true
                 if cobertura_data:
                     return self.cobertura_parser.convert_to_standard_format(cobertura_data)
                 else:
-                    # Try JaCoCo or other XML formats
+                    # Try JaCoCo XML format as fallback
                     return self._parse_jacoco_xml(str(file_path))
             
             elif file_path.suffix.lower() == '.json':
