@@ -1,3 +1,4 @@
+import xml.etree.ElementTree as ET
 """
 Coverage analysis module for extracting and analyzing test coverage data.
 """
@@ -15,6 +16,56 @@ logger = logging.getLogger(__name__)
 
 
 class CoverageAnalyzer:
+    def _parse_jacoco_coverage(self, report_path: str) -> dict:
+        """
+        Parse a JaCoCo XML coverage report and extract coverage metrics per file/class.
+        Returns a dict with overall coverage, file coverage, and metadata.
+        """
+        try:
+            tree = ET.parse(report_path)
+            root = tree.getroot()
+            file_coverage = {}
+            total_missed = 0
+            total_covered = 0
+            for package in root.findall('package'):
+                for sourcefile in package.findall('sourcefile'):
+                    filename = sourcefile.get('name')
+                    missed = 0
+                    covered = 0
+                    for counter in sourcefile.findall('counter'):
+                        if counter.get('type') == 'LINE':
+                            missed += int(counter.get('missed'))
+                            covered += int(counter.get('covered'))
+                    total_missed += missed
+                    total_covered += covered
+                    total_lines = missed + covered
+                    percent_covered = (covered / total_lines * 100) if total_lines > 0 else 0
+                    file_coverage[filename] = {
+                        'missed': missed,
+                        'covered': covered,
+                        'total': total_lines,
+                        'percent_covered': percent_covered
+                    }
+            overall_total = total_missed + total_covered
+            overall_coverage = (total_covered / overall_total * 100) if overall_total > 0 else 0
+            return {
+                'overall_coverage': overall_coverage,
+                'file_coverage': file_coverage,
+                'source_format': 'jacoco',
+                'metadata': {
+                    'total_missed': total_missed,
+                    'total_covered': total_covered
+                }
+            }
+        except Exception as e:
+            logger.error(f"Error parsing JaCoCo report: {str(e)}")
+            return {
+                'error': str(e),
+                'overall_coverage': 0,
+                'file_coverage': {},
+                'source_format': 'jacoco',
+                'metadata': {}
+            }
     def analyze_coverage_with_path(self, coverage_report_path: str) -> Dict[str, Any]:
         """Analyze coverage using a specific coverage report file."""
         try:
@@ -342,12 +393,7 @@ show_missing = true
         except Exception as e:
             logger.error(f"Error parsing coverage file {coverage_file_path}: {str(e)}")
             return {}
-    
-    def _parse_jacoco_xml(self, file_path: str) -> Dict[str, Any]:
-        """Parse JaCoCo XML format (placeholder - can be extended)."""
-        logger.info("JaCoCo XML parsing not fully implemented yet")
-        # This could be extended to parse JaCoCo format
-        return {}
+
     
     def _parse_json_coverage(self, file_path: str) -> Dict[str, Any]:
         """Parse JSON coverage formats (Istanbul, pytest-cov JSON, etc.)."""
@@ -374,6 +420,11 @@ show_missing = true
         except Exception as e:
             logger.error(f"Error parsing JSON coverage: {str(e)}")
             return {}
+    
+    def _parse_jacoco_xml(self, file_path: str) -> Dict[str, Any]:
+        """Parse JaCoCo XML format using _parse_jacoco_coverage."""
+        logger.info("Parsing as JaCoCo XML format")
+        return self._parse_jacoco_coverage(file_path)
     
     def _parse_lcov_coverage(self, file_path: str) -> Dict[str, Any]:
         """Parse LCOV format coverage (placeholder - can be extended)."""
