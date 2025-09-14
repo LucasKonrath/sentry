@@ -253,10 +253,24 @@ Always return valid JSON format as requested.
             if content.endswith('```'):
                 content = content[:-3]  # Remove ```
             
-            # Fix triple-quoted strings for JSON compatibility
-            # Replace """ with properly escaped strings
+            # Fix common JSON issues
             import re
+            
+            # Fix triple-quoted strings for JSON compatibility
             content = re.sub(r'"""\s*\n(.*?)\n\s*"""', lambda m: json.dumps(m.group(1)), content, flags=re.DOTALL)
+            
+            # Fix trailing commas (common LLM issue)
+            content = re.sub(r',\s*}', '}', content)
+            content = re.sub(r',\s*]', ']', content)
+            
+            # Fix single quotes to double quotes
+            content = re.sub(r"'([^']*)':", r'"\1":', content)
+            content = re.sub(r":\s*'([^']*)'", r': "\1"', content)
+            
+            # Try to clean up any remaining formatting issues
+            content = content.strip()
+            
+            logger.debug(f"Cleaned JSON content: {content[:200]}...")
             
             # Parse JSON
             test_data = json.loads(content)
@@ -278,6 +292,7 @@ Always return valid JSON format as requested.
             
         except json.JSONDecodeError as e:
             logger.error(f"Error parsing JSON response: {str(e)}")
+            logger.error(f"Problematic JSON content: {content[:500]}...")
             # Fallback: try to extract code between triple backticks
             return self._fallback_parse_response(response_content, function_info)
         
