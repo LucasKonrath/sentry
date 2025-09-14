@@ -313,49 +313,58 @@ Always return valid JSON format as requested.
             if content.endswith('```'):
                 content = content[:-3]  # Remove ```
             
-            # Skip JSON parsing entirely and extract directly with regex
-            import re
-            logger.info("Bypassing JSON parsing, extracting content directly")
+            # Parse the JSON response properly since Claude is returning valid JSON
+            logger.info("Parsing JSON response from Claude")
             
-            # Extract test file path
-            file_path_match = re.search(r'"test_file_path":\s*"([^"]*)"', response_content)
-            if not file_path_match:
-                file_path_match = re.search(r'"test_file_path"\s*[:=]\s*"([^"]*)"', response_content)
-            
-            # Extract test code - look for everything after test_code until the end or next field
-            # Handle both "test_code": "..." and "test_code""..." patterns
-            code_match = re.search(r'"test_code"[:"]*\s*"?(.+?)(?=",\s*"\w+"|"\s*}|\s*})', response_content, re.DOTALL)
-            if not code_match:
-                # Fallback: get everything after test_code to the end
-                code_match = re.search(r'"test_code"[:"]*\s*"?(.+)', response_content, re.DOTALL)
-            
-            if file_path_match and code_match:
-                test_file_path = file_path_match.group(1)
-                test_code = code_match.group(1).strip()
+            try:
+                parsed_response = json.loads(content)
+                logger.info("Successfully parsed JSON response from Claude")
+                return parsed_response
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse JSON response: {e}")
+                logger.info(f"Content that failed to parse: {content[:500]}...")
+                # Fall back to regex extraction only if JSON parsing fails
+                import re
+                logger.info("Falling back to regex extraction due to JSON parsing failure")
                 
-                # Clean up the extracted code
-                if test_code.startswith('"'):
-                    test_code = test_code[1:]
-                if test_code.endswith('"'):
-                    test_code = test_code[:-1]
+                # Extract test file path
+                file_path_match = re.search(r'"test_file_path":\s*"([^"]*)"', response_content)
+                if not file_path_match:
+                    file_path_match = re.search(r'"test_file_path"\s*[:=]\s*"([^"]*)"', response_content)
                 
-                # Unescape newlines and other escape sequences
-                test_code = test_code.replace('\\n', '\n').replace('\\"', '"')
+                # Extract test code - look for everything after test_code until the end or next field
+                code_match = re.search(r'"test_code"[:"]*\s*"?(.+?)(?=",\s*"\w+"|"\s*}|\s*})', response_content, re.DOTALL)
+                if not code_match:
+                    # Fallback: get everything after test_code to the end
+                    code_match = re.search(r'"test_code"[:"]*\s*"?(.+)', response_content, re.DOTALL)
                 
-                # Remove any trailing comma or brace
-                test_code = re.sub(r'[,}]\s*$', '', test_code).strip()
-                
-                logger.info("Successfully extracted test content using direct parsing")
-                
-                test_data = {
-                    "test_file_path": test_file_path,
-                    "test_code": test_code,
-                    "test_class_name": self._extract_class_name(test_code),
-                    "test_methods": [],
-                    "imports": [],
-                    "setup_code": "",
-                    "explanation": "Generated Java unit test"
-                }
+                if file_path_match and code_match:
+                    test_file_path = file_path_match.group(1)
+                    test_code = code_match.group(1).strip()
+                    
+                    # Clean up the extracted code
+                    if test_code.startswith('"'):
+                        test_code = test_code[1:]
+                    if test_code.endswith('"'):
+                        test_code = test_code[:-1]
+                    
+                    # Unescape newlines and other escape sequences
+                    test_code = test_code.replace('\\n', '\n').replace('\\"', '"')
+                    
+                    # Remove any trailing comma or brace
+                    test_code = re.sub(r'[,}]\s*$', '', test_code).strip()
+                    
+                    logger.info("Successfully extracted test content using regex fallback")
+                    
+                    test_data = {
+                        "test_file_path": test_file_path,
+                        "test_code": test_code,
+                        "test_class_name": self._extract_class_name(test_code),
+                        "test_methods": [],
+                        "imports": [],
+                        "setup_code": "",
+                        "explanation": "Generated Java unit test"
+                    }
             else:
                 logger.error("Could not extract test file path and code from response")
                 return None
