@@ -118,11 +118,14 @@ class PRCoverageAnalyzer:
 @click.option('--repo-url', required=True, help='GitHub repository URL')
 @click.option('--pr-number', required=True, type=int, help='Pull request number')
 @click.option('--coverage-report', help='Path to coverage report file')
+@click.option('--source-root', help='Source root directory for the project (e.g., src/main/java)')
 @click.option('--config-file', help='Path to configuration file')
-def main(repo_url: str, pr_number: int, coverage_report: Optional[str], config_file: Optional[str]):
+def main(repo_url: str, pr_number: int, coverage_report: Optional[str], source_root: Optional[str], config_file: Optional[str]):
     """Analyze PR coverage and generate tests to improve it."""
     if config_file:
         os.environ['CONFIG_FILE'] = config_file
+    if source_root:
+        os.environ['SOURCE_ROOT'] = source_root
     analyzer = PRCoverageAnalyzer()
     result = analyzer.analyze_pr(repo_url, pr_number, coverage_report)
     if result['success']:
