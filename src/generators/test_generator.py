@@ -105,7 +105,7 @@ class TestGenerator:
                         "test_file_path": test_info["test_file_path"],
                         "test_code": test_info["test_code"],
                         "test_class_name": test_info["test_class_name"],
-                        "test_methods": test_info["test_methods"],
+                        "test_methods": test_info.get("test_methods", []),
                         "imports": test_info.get("imports", []),
                         "setup_code": test_info.get("setup_code", ""),
                         "explanation": test_info.get("explanation", "")
