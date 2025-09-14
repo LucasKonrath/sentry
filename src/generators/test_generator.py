@@ -193,23 +193,23 @@ I need you to generate comprehensive unit tests for the following {language} fun
 - Test with different input types
 - Mock external dependencies appropriately
 
-Please provide the complete test file content with:
-- Proper imports
-- Test class definition
-- All necessary test methods
-- Setup/teardown methods if needed
-- Clear assertions
+Please provide the complete test file content as a properly formatted JSON response.
 
-Format your response as a JSON object with:
+CRITICAL JSON FORMATTING REQUIREMENTS:
+- Return ONLY a valid JSON object - no markdown, no code blocks, no extra text
+- Use proper JSON escaping for the test_code field (\\n for newlines, \\" for quotes)
+- Include the complete test class with all methods and imports
+- Do NOT use triple quotes or markdown formatting
+
+Required JSON structure:
 {{
-    "test_file_path": "path/to/test_file.py",
-    "test_code": "complete test file content",
-    "test_class_name": "TestClassName",
-    "test_methods": ["method1", "method2", ...],
-    "imports": ["import1", "import2", ...],
-    "setup_code": "any setup code needed",
-    "explanation": "brief explanation of the test strategy"
+    "test_file_path": "src/test/java/YourTestClass.java",
+    "test_code": "package com.example;\\n\\nimport org.junit.jupiter.api.Test;\\n\\npublic class YourTestClass {{\\n    @Test\\n    void testMethod() {{\\n        // your test code\\n    }}\\n}}",
+    "test_class_name": "YourTestClass",
+    "explanation": "Brief explanation of what this test covers"
 }}
+
+IMPORTANT: The test_code field must contain the complete, valid Java test class as a single properly escaped JSON string.
 """
         return prompt
     
@@ -264,7 +264,29 @@ Key principles:
 9. Use proper Java imports (org.junit.jupiter.api.*, org.mockito.*, etc.)
 10. Create proper test class structure with appropriate access modifiers
 
-Always return valid JSON format as requested.
+CRITICAL: You must return a valid JSON object with this EXACT structure:
+{
+    "test_file_path": "src/test/java/YourTestClass.java",
+    "test_code": "your complete Java test code here - properly escaped for JSON",
+    "test_class_name": "YourTestClass",
+    "explanation": "Brief explanation of the test"
+}
+
+IMPORTANT JSON FORMATTING RULES:
+- Use double quotes for all strings
+- Escape all quotes inside the test_code string with \"
+- Escape all newlines inside the test_code string with \\n
+- Do NOT use triple quotes or markdown code blocks
+- The test_code field must contain the complete Java test class as a single escaped string
+- Ensure the JSON is valid and parseable
+
+Example format:
+{
+    "test_file_path": "src/test/java/ExampleTest.java",
+    "test_code": "package com.example;\\n\\nimport org.junit.jupiter.api.Test;\\nimport static org.junit.jupiter.api.Assertions.*;\\n\\npublic class ExampleTest {\\n    @Test\\n    void testMethod() {\\n        assertEquals(1, 1);\\n    }\\n}",
+    "test_class_name": "ExampleTest",
+    "explanation": "Test for example method"
+}
 """
         else:
             return f"""
