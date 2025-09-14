@@ -296,8 +296,12 @@ Always return valid JSON format as requested.
             if not file_path_match:
                 file_path_match = re.search(r'"test_file_path"\s*[:=]\s*"([^"]*)"', response_content)
             
-            # Extract test code - look for the pattern after test_code field
-            code_match = re.search(r'"test_code"[:"]*\s*"?([^}]+)', response_content, re.DOTALL)
+            # Extract test code - look for everything after test_code until the end or next field
+            # Handle both "test_code": "..." and "test_code""..." patterns
+            code_match = re.search(r'"test_code"[:"]*\s*"?(.+?)(?=",\s*"\w+"|"\s*}|\s*})', response_content, re.DOTALL)
+            if not code_match:
+                # Fallback: get everything after test_code to the end
+                code_match = re.search(r'"test_code"[:"]*\s*"?(.+)', response_content, re.DOTALL)
             
             if file_path_match and code_match:
                 test_file_path = file_path_match.group(1)
