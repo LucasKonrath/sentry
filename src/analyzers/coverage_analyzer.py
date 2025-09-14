@@ -55,9 +55,33 @@ class CoverageAnalyzer:
             if "totals" in coverage_report and "percent_covered" in coverage_report["totals"]:
                 overall_coverage = coverage_report["totals"]["percent_covered"]
             
+            # Convert all file paths in file_coverage and files to absolute paths
+
+            def abs_file_dict(d):
+                def fix_path(k):
+                    if os.path.isabs(k):
+                        return k
+                    if k.startswith("src/"):
+                        return os.path.abspath(k)
+                    return os.path.abspath(os.path.join("src", k))
+                return {fix_path(k): v for k, v in d.items()}
+
+            file_coverage = coverage_report.get("file_coverage", {})
+            files = coverage_report.get("files", {})
+            # If file_coverage is empty, fallback to files
+            if not file_coverage and files:
+                file_coverage = files
+            file_coverage = abs_file_dict(file_coverage)
+
+            # Also update files key if present
+            if "files" in coverage_report:
+                coverage_report["files"] = abs_file_dict(coverage_report["files"])
+            if "file_coverage" in coverage_report:
+                coverage_report["file_coverage"] = file_coverage
+
             return {
                 "overall_coverage": overall_coverage,
-                "file_coverage": coverage_report.get("file_coverage", coverage_report.get("files", {})),
+                "file_coverage": file_coverage,
                 "low_coverage_areas": low_coverage_areas,
                 "threshold": self.coverage_threshold,
                 "meets_threshold": overall_coverage >= self.coverage_threshold,

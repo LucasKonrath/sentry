@@ -37,19 +37,25 @@ class CodeAnalyzer:
         uncovered_areas = []
         low_coverage_files = coverage_report.get("low_coverage_areas", [])
         
+        # Only analyze files inside the target project source directory
+        project_src_dir = os.path.abspath("src")
         for coverage_area in low_coverage_files:
-            file_path = coverage_area["file"]
+            file_path = os.path.abspath(coverage_area["file"])
+            # Skip files not inside the project src directory
+            if not file_path.startswith(project_src_dir):
+                logger.info(f"Skipping non-project file: {file_path}")
+                continue
             missing_lines = coverage_area.get("missing_lines", [])
-            
+
             # Analyze the file structure
             file_analysis = self._analyze_file_structure(file_path)
-            
+
             if file_analysis:
                 # Find specific functions/classes that need tests
                 uncovered_functions = self._find_uncovered_functions(
                     file_analysis, missing_lines
                 )
-                
+
                 for func_info in uncovered_functions:
                     uncovered_areas.append({
                         "file_path": file_path,
@@ -74,16 +80,22 @@ class CodeAnalyzer:
         return uncovered_areas
     
     def _analyze_file_structure(self, file_path: str) -> Optional[Dict[str, Any]]:
-        """Analyze the structure of a code file."""
+        """Analyze the structure of a code file, resolving to absolute path."""
         try:
-            file_ext = Path(file_path).suffix
+            # Always resolve to absolute path
+            abs_file_path = os.path.abspath(file_path)
+            file_ext = Path(abs_file_path).suffix
             if file_ext not in self.supported_extensions:
                 logger.warning(f"Unsupported file type: {file_ext}")
                 return None
-            
+
+            if not os.path.exists(abs_file_path):
+                logger.error(f"File does not exist: {abs_file_path}")
+                return None
+
             analyzer = self.supported_extensions[file_ext]
-            return analyzer(file_path)
-            
+            return analyzer(abs_file_path)
+
         except Exception as e:
             logger.error(f"Error analyzing file {file_path}: {str(e)}")
             return None
