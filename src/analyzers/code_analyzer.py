@@ -55,6 +55,8 @@ class CodeAnalyzer:
 
             # Analyze the file structure
             file_analysis = self._analyze_file_structure(file_path)
+            logger.info(f"File exists: {os.path.exists(file_path)}")
+            logger.info(f"File analysis result: {file_analysis is not None}")
 
             if file_analysis:
                 # Find specific functions/classes that need tests
@@ -83,6 +85,7 @@ class CodeAnalyzer:
         # Sort by priority
         uncovered_areas.sort(key=lambda x: x["priority"], reverse=True)
         
+        logger.info(f"Total uncovered areas found: {len(uncovered_areas)}")
         return uncovered_areas
     
     def _analyze_file_structure(self, file_path: str) -> Optional[Dict[str, Any]]:
