@@ -71,6 +71,7 @@ class CoverageAnalyzer:
         try:
             logger.info(f"Analyzing coverage from provided report: {coverage_report_path}")
             coverage_report = self._parse_existing_coverage(coverage_report_path)
+            logger.info(f"Parsed coverage report: {coverage_report}")
             low_coverage_areas = self._find_low_coverage_areas(
                 coverage_report, self.coverage_threshold
             )
@@ -275,11 +276,22 @@ show_missing = true
         """Find areas with coverage below the threshold."""
         low_coverage_areas = []
         
+        # Debug logging
+        logger.info(f"Coverage report keys: {list(coverage_report.keys())}")
+        logger.info(f"Coverage threshold: {threshold}")
+        
         # Handle both old format ("files") and new standard format ("file_coverage")
         files = coverage_report.get("files", coverage_report.get("file_coverage", {}))
+        logger.info(f"Found {len(files)} files in coverage report")
         
         for file_path, file_data in files.items():
-            file_coverage = file_data.get("summary", {}).get("percent_covered", 0)
+            # JaCoCo format uses 'percent_covered' directly, not nested in 'summary'
+            if isinstance(file_data, dict):
+                file_coverage = file_data.get("percent_covered", file_data.get("summary", {}).get("percent_covered", 0))
+            else:
+                file_coverage = 0
+                
+            logger.info(f"File: {file_path}, Coverage: {file_coverage}%")
             
             if file_coverage < threshold:
                 missing_lines = file_data.get("missing_lines", [])
@@ -289,6 +301,8 @@ show_missing = true
                     "missing_lines": missing_lines,
                     "priority": "high" if file_coverage < threshold * 0.5 else "medium"
                 })
+        
+        logger.info(f"Found {len(low_coverage_areas)} low coverage areas")
         
         # Sort by priority and coverage percentage
         low_coverage_areas.sort(
