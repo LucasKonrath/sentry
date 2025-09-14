@@ -331,13 +331,31 @@ Always return valid JSON format as requested.
                 return None
 
             
-            # Validate and set defaults
+            # Generate proper relative test file path (ignore LLM's absolute path)
             file_path = function_info["file_path"]
-            test_file_name = f"test_{file_path.split('/')[-1]}"
-            test_dir = file_path.replace("src/", "tests/").rsplit("/", 1)[0]
+            file_name = file_path.split('/')[-1]  # e.g., "UnusedClass.java"
+            test_file_name = file_name.replace('.java', 'Test.java')  # e.g., "UnusedClassTest.java"
+            
+            # Convert src path to test path: src/main/java -> src/test/java
+            if "src/main/java" in file_path:
+                test_dir = file_path.replace("src/main/java", "src/test/java").rsplit("/", 1)[0]
+            else:
+                # Fallback for other structures
+                test_dir = file_path.replace("src/", "src/test/").rsplit("/", 1)[0]
+            
+            # Ensure path is relative (remove any leading slash or absolute path)
+            relative_test_path = f"{test_dir}/{test_file_name}"
+            if relative_test_path.startswith('/'):
+                relative_test_path = relative_test_path[1:]
+            
+            # Extract just the relative part if it's still absolute
+            if 'src/test/' in relative_test_path:
+                relative_test_path = relative_test_path[relative_test_path.find('src/test/'):]
+            
+            logger.info(f"Generated relative test path: {relative_test_path}")
             
             return {
-                "test_file_path": f"{test_dir}/{test_file_name}",
+                "test_file_path": relative_test_path,
                 "test_code": test_data.get("test_code", ""),
                 "test_class_name": test_data.get("test_class_name", f"Test{function_info['function_name'].title()}"),
                 "test_methods": test_data.get("test_methods", []),
