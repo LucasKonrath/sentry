@@ -38,9 +38,19 @@ class CodeAnalyzer:
         low_coverage_files = coverage_report.get("low_coverage_areas", [])
         
         # Analyze all files in the target project (for external project analysis)
+        source_root = os.environ.get('SOURCE_ROOT', 'src')
+        logger.info(f"Using SOURCE_ROOT: {source_root}")
+        
         for coverage_area in low_coverage_files:
-            file_path = os.path.abspath(coverage_area["file"])
-            logger.info(f"Analyzing file: {file_path}")
+            original_file_path = coverage_area["file"]
+            
+            # If the file path is relative, prepend SOURCE_ROOT
+            if not os.path.isabs(original_file_path):
+                file_path = os.path.abspath(os.path.join(source_root, original_file_path))
+            else:
+                file_path = os.path.abspath(original_file_path)
+            
+            logger.info(f"Analyzing file: {file_path} (original: {original_file_path})")
             missing_lines = coverage_area.get("missing_lines", [])
 
             # Analyze the file structure
