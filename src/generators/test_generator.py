@@ -287,40 +287,49 @@ Always return valid JSON format as requested.
             if content.endswith('```'):
                 content = content[:-3]  # Remove ```
             
-            # Fix common JSON issues
+            # Skip JSON parsing entirely and extract directly with regex
             import re
+            logger.info("Bypassing JSON parsing, extracting content directly")
             
-            # Fix the specific Claude JSON issue: "test_code""package... 
-            # Replace with: "test_code": "package...
-            content = re.sub(r'("test_code")(")', r'\1: \2', content)
+            # Extract test file path
+            file_path_match = re.search(r'"test_file_path":\s*"([^"]*)"', response_content)
+            if not file_path_match:
+                file_path_match = re.search(r'"test_file_path"\s*[:=]\s*"([^"]*)"', response_content)
             
-            # More general fix for missing colons between field and value
-            content = re.sub(r'("\w+")(\s*)("[^"]*")', r'\1:\2\3', content)
+            # Extract test code - look for the pattern after test_code field
+            code_match = re.search(r'"test_code"[:"]*\s*"?([^}]+)', response_content, re.DOTALL)
             
-            # Fix triple-quoted strings for JSON compatibility
-            # This handles the specific case where Claude generates: "test_code": """code here"""
-            def fix_triple_quotes(match):
-                # Extract the content inside triple quotes
-                raw_content = match.group(1)
-                # Properly escape it for JSON
-                return json.dumps(raw_content)
-            
-            content = re.sub(r':\s*"""\s*(.*?)\s*"""', fix_triple_quotes, content, flags=re.DOTALL)
-            
-            # Fix trailing commas (common LLM issue)
-            content = re.sub(r',\s*}', '}', content)
-            content = re.sub(r',\s*]', ']', content)
-            
-            # Fix single quotes to double quotes (but be careful not to break strings)
-            content = re.sub(r"'([^']*)':", r'"\1":', content)
-            
-            # Try to clean up any remaining formatting issues
-            content = content.strip()
-            
-            logger.debug(f"Cleaned JSON content: {content[:200]}...")
-            
-            # Parse JSON
-            test_data = json.loads(content)
+            if file_path_match and code_match:
+                test_file_path = file_path_match.group(1)
+                test_code = code_match.group(1).strip()
+                
+                # Clean up the extracted code
+                if test_code.startswith('"'):
+                    test_code = test_code[1:]
+                if test_code.endswith('"'):
+                    test_code = test_code[:-1]
+                
+                # Unescape newlines and other escape sequences
+                test_code = test_code.replace('\\n', '\n').replace('\\"', '"')
+                
+                # Remove any trailing comma or brace
+                test_code = re.sub(r'[,}]\s*$', '', test_code).strip()
+                
+                logger.info("Successfully extracted test content using direct parsing")
+                
+                test_data = {
+                    "test_file_path": test_file_path,
+                    "test_code": test_code,
+                    "test_class_name": self._extract_class_name(test_code),
+                    "test_methods": [],
+                    "imports": [],
+                    "setup_code": "",
+                    "explanation": "Generated Java unit test"
+                }
+            else:
+                logger.error("Could not extract test file path and code from response")
+                return None
+
             
             # Validate and set defaults
             file_path = function_info["file_path"]
