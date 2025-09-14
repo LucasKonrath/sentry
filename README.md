@@ -2,13 +2,30 @@
 
 A comprehensive tool that analyzes GitHub pull requests, evaluates test coverage, and automatically generates unit tests using LLM to improve code coverage.
 
+## 🚀 Quick Example
+
+```bash
+# Clone and setup
+git clone https://github.com/LucasKonrath/sentry.git && cd sentry
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+
+# Configure (add your API keys to .env)
+cp .env.example .env
+
+# Analyze a pull request
+python src/main.py --repo-url https://github.com/owner/repo --pr-number 123
+```
+
+**Output**: Generates comprehensive unit tests using Claude 3.5 Sonnet, creates PR with improved test coverage.
+
 ## Features
 
 - **Multi-Format Coverage Analysis**: Supports multiple coverage formats including:
   - pytest-cov and coverage.py (Python)
   - Cobertura XML (Java, C#, Python, JavaScript)
   - Istanbul JSON (JavaScript/TypeScript)
-- **LLM-Powered Test Generation**: Uses OpenAI GPT-4 to generate intelligent unit tests
+- **LLM-Powered Test Generation**: Multi-provider support (Claude 3.5 Sonnet, OpenAI GPT-4) for intelligent unit test generation
 - **GitHub Integration**: Seamless PR creation and management
 - **Configurable Thresholds**: Set custom coverage targets and quality standards
 - **Docker Support**: Easy deployment with Docker and docker-compose
@@ -29,12 +46,65 @@ A comprehensive tool that analyzes GitHub pull requests, evaluates test coverage
 └── requirements.txt       # Python dependencies
 ```
 
-## Setup
+## Quick Start
 
-1. Clone the repository
-2. Install dependencies: `pip install -r requirements.txt`
-3. Configure environment variables (see config/env.example)
-4. Run the analyzer: `python src/main.py`
+### Prerequisites
+- Python 3.8+ installed
+- Git installed
+- GitHub account with personal access token
+- LLM API key (Claude or OpenAI)
+
+### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/LucasKonrath/sentry.git
+   cd sentry
+   ```
+
+2. **Set up Python virtual environment**
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+   ```
+
+3. **Install dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Configure environment variables**
+   ```bash
+   cp .env.example .env
+   # Edit .env with your actual API keys and settings
+   ```
+
+### Environment Configuration
+
+Create a `.env` file with the following variables:
+
+```env
+# GitHub Configuration
+GITHUB_TOKEN=ghp_your_github_token_here
+
+# LLM Provider (choose one)
+LLM_PROVIDER=claude  # or openai
+
+# Claude Configuration (recommended)
+ANTHROPIC_API_KEY=sk-ant-api03-your_claude_api_key_here
+LLM_MODEL=claude-3-5-sonnet-20241022
+
+# OpenAI Configuration (alternative)
+OPENAI_API_KEY=sk-your_openai_api_key_here
+
+# Coverage Settings
+COVERAGE_THRESHOLD=80
+MIN_COVERAGE_INCREASE=5
+
+# Logging
+LOG_LEVEL=INFO
+LOCAL_MODE=false
+```
 
 ## Supported Coverage Formats
 
@@ -58,29 +128,287 @@ The system automatically detects and supports multiple coverage formats:
 ### Multi-Language Projects
 The analyzer can handle repositories with multiple languages by detecting and parsing coverage reports in different formats simultaneously.
 
-## Configuration
-
-Set up your environment variables:
-- `GITHUB_TOKEN`: GitHub Personal Access Token
-- `OPENAI_API_KEY`: OpenAI API key for LLM test generation
-- `COVERAGE_THRESHOLD`: Minimum coverage percentage target
-
 ## Usage
+
+### Command Line Interface
+
+#### Analyze a Pull Request
+```bash
+# Basic PR analysis
+python src/main.py --repo-url https://github.com/owner/repo --pr-number 123
+
+# With custom coverage threshold
+python src/main.py --repo-url https://github.com/owner/repo --pr-number 123 --threshold 85
+
+# Generate tests for specific files
+python src/main.py --repo-url https://github.com/owner/repo --pr-number 123 --files src/calculator.py
+```
+
+#### Test the LLM Integration
+```bash
+# Test Claude integration
+python test_claude_real.py
+
+# Debug Claude responses
+python debug_claude.py
+```
+
+#### Run with Docker
+```bash
+# Build and run with Docker Compose
+docker-compose up --build
+
+# Or run individual container
+docker build -t pr-analyzer .
+docker run -p 5000:5000 --env-file .env pr-analyzer
+```
+
+### Python API Usage
 
 ```python
 from src.main import PRCoverageAnalyzer
+from src.utils.config import Config
 
-analyzer = PRCoverageAnalyzer()
-analyzer.analyze_pr(repo_url, pr_number)
+# Initialize with configuration
+config = Config()
+analyzer = PRCoverageAnalyzer(config)
+
+# Analyze a pull request
+result = analyzer.analyze_pr(
+    repo_url="https://github.com/owner/repo",
+    pr_number=123
+)
+
+print(f"Coverage: {result.coverage_percentage}%")
+print(f"Generated {len(result.generated_tests)} tests")
 ```
+
+### Available Commands
+
+| Command | Description |
+|---------|-------------|
+| `python src/main.py --help` | Show all available options |
+| `python test_claude_real.py` | Test Claude API integration |
+| `python debug_claude.py` | Debug LLM responses |
+| `pytest tests/` | Run the test suite |
+| `black src/ tests/` | Format code |
+| `flake8 src/ tests/` | Lint code |
+
+### Configuration Options
+
+| Variable | Description | Default | Required |
+|----------|-------------|---------|----------|
+| `GITHUB_TOKEN` | GitHub Personal Access Token | - | ✅ |
+| `LLM_PROVIDER` | LLM provider (`claude` or `openai`) | `openai` | ✅ |
+| `ANTHROPIC_API_KEY` | Claude API key | - | If using Claude |
+| `OPENAI_API_KEY` | OpenAI API key | - | If using OpenAI |
+| `LLM_MODEL` | Model to use | `claude-3-5-sonnet-20241022` | ❌ |
+| `COVERAGE_THRESHOLD` | Minimum coverage % | `80` | ❌ |
+| `MIN_COVERAGE_INCREASE` | Required coverage increase | `5` | ❌ |
+| `LOG_LEVEL` | Logging level | `INFO` | ❌ |
+| `LOCAL_MODE` | Skip API calls for testing | `false` | ❌ |
+
+### Example Workflows
+
+#### 1. Analyze Coverage for a Java Project
+```bash
+# The analyzer will automatically detect Java files and use appropriate coverage parsers
+python src/main.py \
+  --repo-url https://github.com/owner/java-project \
+  --pr-number 42 \
+  --threshold 90
+```
+
+#### 2. Generate Tests for Python Code
+```bash
+# Focus on specific Python files with low coverage
+python src/main.py \
+  --repo-url https://github.com/owner/python-project \
+  --pr-number 15 \
+  --files "src/utils/calculator.py,src/models/user.py"
+```
+
+#### 3. Run as Webhook Server
+```bash
+# Start the webhook server for automated PR analysis
+export FLASK_SECRET_KEY=your_secret_key
+export GITHUB_WEBHOOK_SECRET=your_webhook_secret
+python src/webhook_server.py
+```
+
+### Getting API Keys
+
+#### GitHub Token
+1. Go to GitHub → Settings → Developer settings → Personal access tokens
+2. Generate new token with `repo` permissions
+3. Copy the token to your `.env` file
+
+#### Claude API Key (Recommended)
+1. Visit https://console.anthropic.com/
+2. Create an account or sign in
+3. Generate an API key
+4. Copy to `ANTHROPIC_API_KEY` in `.env`
+
+#### OpenAI API Key (Alternative)
+1. Visit https://platform.openai.com/api-keys
+2. Create an account or sign in  
+3. Generate an API key
+4. Copy to `OPENAI_API_KEY` in `.env`
+
+## Troubleshooting
+
+### Common Issues
+
+#### "No LLM client available"
+```bash
+# Check your .env file has the correct API key
+cat .env | grep -E "(ANTHROPIC_API_KEY|OPENAI_API_KEY)"
+
+# Test your API connection
+python -c "from src.utils.config import Config; print(Config().llm_provider)"
+```
+
+#### "GitHub API rate limit exceeded"
+```bash
+# Check your GitHub token permissions
+curl -H "Authorization: token $GITHUB_TOKEN" https://api.github.com/rate_limit
+```
+
+#### "Coverage file not found"
+- Ensure your project generates coverage reports in supported formats
+- Check the coverage file paths in your project
+- Verify file permissions
+
+#### Import Errors
+```bash
+# Ensure virtual environment is activated
+source .venv/bin/activate
+
+# Reinstall dependencies
+pip install -r requirements.txt --force-reinstall
+```
+
+### Debug Mode
+
+Enable debug logging for detailed information:
+```bash
+export LOG_LEVEL=DEBUG
+python src/main.py --repo-url https://github.com/owner/repo --pr-number 123
+```
+
+### Testing the Setup
+
+Run the built-in tests to verify everything works:
+```bash
+# Test basic functionality
+pytest tests/ -v
+
+# Test LLM integration
+python test_claude_real.py
+
+# Test with sample data
+python src/main.py --help
+```
+
+## Development
+
+### Development Setup
+
+```bash
+# Install development dependencies
+pip install -r requirements.txt
+pip install black flake8 mypy pre-commit
+
+# Set up pre-commit hooks
+pre-commit install
+
+# Run tests in watch mode
+pytest tests/ --watch
+```
+
+### Project Architecture
+
+```
+src/
+├── analyzers/           # Coverage analysis modules
+│   ├── coverage_analyzer.py
+│   ├── java_analyzer.py
+│   └── python_analyzer.py
+├── generators/          # LLM test generation
+│   └── test_generator.py
+├── github/             # GitHub API integration  
+│   ├── client.py
+│   └── pr_handler.py
+├── utils/              # Utilities and configuration
+│   └── config.py
+└── main.py            # CLI entry point
+```
+
+### Adding New Language Support
+
+1. Create analyzer in `src/analyzers/`
+2. Add coverage format parser
+3. Update `test_generator.py` prompts
+4. Add tests in `tests/`
+5. Update documentation
 
 ## Contributing
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests
-5. Submit a pull request
+### Development Workflow
+
+1. **Fork and clone**
+   ```bash
+   git clone https://github.com/yourusername/sentry.git
+   cd sentry
+   ```
+
+2. **Set up development environment**
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate
+   pip install -r requirements.txt
+   pre-commit install
+   ```
+
+3. **Create feature branch**
+   ```bash
+   git checkout -b feature/your-feature-name
+   ```
+
+4. **Make changes and test**
+   ```bash
+   # Run tests
+   pytest tests/ -v
+   
+   # Format code  
+   black src/ tests/
+   
+   # Lint code
+   flake8 src/ tests/
+   
+   # Type checking
+   mypy src/
+   ```
+
+5. **Commit and push**
+   ```bash
+   git add .
+   git commit -m "feat: add your feature description"
+   git push origin feature/your-feature-name
+   ```
+
+6. **Create Pull Request**
+   - Open PR on GitHub
+   - Fill out the PR template
+   - Wait for review and CI checks
+
+### Code Standards
+
+- Follow PEP 8 style guidelines
+- Add type hints to all functions
+- Write comprehensive tests
+- Update documentation for new features
+- Use conventional commit messages
 
 ## License
 
