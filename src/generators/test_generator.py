@@ -284,6 +284,12 @@ Always return valid JSON format as requested.
             # Fix common JSON issues
             import re
             
+            # Fix missing colon after field names (specific Claude issue)
+            content = re.sub(r'("test_code")(\s*")', r'\1:\2', content)
+            content = re.sub(r'("test_file_path")(\s*")', r'\1:\2', content)
+            content = re.sub(r'("test_class_name")(\s*")', r'\1:\2', content)
+            content = re.sub(r'("imports")(\s*\[)', r'\1:\2', content)
+            
             # Fix triple-quoted strings for JSON compatibility
             # This handles the specific case where Claude generates: "test_code": """code here"""
             def fix_triple_quotes(match):
