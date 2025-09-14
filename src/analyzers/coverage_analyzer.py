@@ -15,6 +15,53 @@ logger = logging.getLogger(__name__)
 
 
 class CoverageAnalyzer:
+    def analyze_coverage_with_path(self, coverage_report_path: str) -> Dict[str, Any]:
+        """Analyze coverage using a specific coverage report file."""
+        try:
+            logger.info(f"Analyzing coverage from provided report: {coverage_report_path}")
+            coverage_report = self._parse_existing_coverage(coverage_report_path)
+            low_coverage_areas = self._find_low_coverage_areas(
+                coverage_report, self.coverage_threshold
+            )
+            overall_coverage = coverage_report.get("overall_coverage", 0)
+            if "totals" in coverage_report and "percent_covered" in coverage_report["totals"]:
+                overall_coverage = coverage_report["totals"]["percent_covered"]
+            # Convert all file paths in file_coverage and files to absolute paths
+            def abs_file_dict(d):
+                def fix_path(k):
+                    if os.path.isabs(k):
+                        return k
+                    if k.startswith("src/"):
+                        return os.path.abspath(k)
+                    return os.path.abspath(os.path.join("src", k))
+                return {fix_path(k): v for k, v in d.items()}
+            file_coverage = coverage_report.get("file_coverage", {})
+            files = coverage_report.get("files", {})
+            if not file_coverage and files:
+                file_coverage = files
+            file_coverage = abs_file_dict(file_coverage)
+            if "files" in coverage_report:
+                coverage_report["files"] = abs_file_dict(coverage_report["files"])
+            if "file_coverage" in coverage_report:
+                coverage_report["file_coverage"] = file_coverage
+            return {
+                "overall_coverage": overall_coverage,
+                "file_coverage": file_coverage,
+                "low_coverage_areas": low_coverage_areas,
+                "threshold": self.coverage_threshold,
+                "meets_threshold": overall_coverage >= self.coverage_threshold,
+                "source_format": coverage_report.get("source_format", "pytest"),
+                "metadata": coverage_report.get("metadata", {})
+            }
+        except Exception as e:
+            logger.error(f"Error analyzing coverage from provided report: {str(e)}")
+            return {
+                "error": str(e),
+                "overall_coverage": 0,
+                "file_coverage": {},
+                "low_coverage_areas": [],
+                "meets_threshold": False
+            }
     """Analyzes test coverage for code changes in pull requests."""
     
     def __init__(self, config):

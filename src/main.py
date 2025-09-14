@@ -47,7 +47,7 @@ class PRCoverageAnalyzer:
         self.test_generator = TestGenerator(self.config)
         self.pr_manager = PRManager(self.config)
         
-    def analyze_pr(self, repo_url: str, pr_number: int) -> dict:
+    def analyze_pr(self, repo_url: str, pr_number: int, coverage_report_path: Optional[str] = None) -> dict:
         """
         Analyze a pull request and generate improved test coverage.
         
@@ -67,7 +67,10 @@ class PRCoverageAnalyzer:
             
             # Step 2: Analyze current coverage
             console.print("📊 Analyzing current test coverage...", style="yellow")
-            coverage_report = self.coverage_analyzer.analyze_coverage(changed_files)
+            if coverage_report_path:
+                coverage_report = self.coverage_analyzer.analyze_coverage_with_path(coverage_report_path)
+            else:
+                coverage_report = self.coverage_analyzer.analyze_coverage(changed_files)
             
             # Step 3: Identify uncovered code areas
             uncovered_areas = self.code_analyzer.find_uncovered_areas(
@@ -110,19 +113,18 @@ class PRCoverageAnalyzer:
             }
 
 
+
 @click.command()
 @click.option('--repo-url', required=True, help='GitHub repository URL')
 @click.option('--pr-number', required=True, type=int, help='Pull request number')
+@click.option('--coverage-report', help='Path to coverage report file')
 @click.option('--config-file', help='Path to configuration file')
-def main(repo_url: str, pr_number: int, config_file: Optional[str]):
+def main(repo_url: str, pr_number: int, coverage_report: Optional[str], config_file: Optional[str]):
     """Analyze PR coverage and generate tests to improve it."""
-    
     if config_file:
         os.environ['CONFIG_FILE'] = config_file
-    
     analyzer = PRCoverageAnalyzer()
-    result = analyzer.analyze_pr(repo_url, pr_number)
-    
+    result = analyzer.analyze_pr(repo_url, pr_number, coverage_report)
     if result['success']:
         console.print("🎉 Analysis completed successfully!", style="bold green")
     else:
