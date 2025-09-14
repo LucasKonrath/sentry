@@ -1,10 +1,10 @@
 """
 LLM-powered test generator for creating unit tests to improve code coverage.
+Supports multiple LLM providers: OpenAI and Claude.
 """
 
 import logging
 from typing import Dict, List, Any, Optional
-import openai
 import json
 
 logger = logging.getLogger(__name__)
@@ -15,13 +15,67 @@ class TestGenerator:
     
     def __init__(self, config):
         self.config = config
-        if config.openai_api_key:
-            self.openai_client = openai.OpenAI(api_key=config.openai_api_key)
-        else:
-            self.openai_client = None
+        self.provider = config.llm_provider.lower()
         self.model = config.llm_model
         self.max_tokens = config.max_tokens
         self.temperature = config.temperature
+        
+        # Initialize provider-specific clients
+        self.openai_client = None
+        self.anthropic_client = None
+        
+        if self.provider == "openai" and config.openai_api_key:
+            import openai
+            self.openai_client = openai.OpenAI(api_key=config.openai_api_key)
+        elif self.provider == "claude" and config.anthropic_api_key:
+            import anthropic
+            self.anthropic_client = anthropic.Anthropic(api_key=config.anthropic_api_key)
+        else:
+            logger.warning(f"No valid API key found for provider: {self.provider}")
+        
+        logger.info(f"TestGenerator initialized with provider: {self.provider}, model: {self.model}")
+    
+    def _is_client_configured(self) -> bool:
+        """Check if the appropriate LLM client is configured."""
+        if self.provider == "openai":
+            return self.openai_client is not None
+        elif self.provider == "claude":
+            return self.anthropic_client is not None
+        return False
+    
+    def _call_llm(self, system_prompt: str, user_prompt: str) -> str:
+        """Call the configured LLM provider."""
+        try:
+            if self.provider == "openai" and self.openai_client:
+                response = self.openai_client.chat.completions.create(
+                    model=self.model,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt}
+                    ],
+                    max_tokens=self.max_tokens,
+                    temperature=self.temperature
+                )
+                return response.choices[0].message.content
+                
+            elif self.provider == "claude" and self.anthropic_client:
+                response = self.anthropic_client.messages.create(
+                    model=self.model,
+                    max_tokens=self.max_tokens,
+                    temperature=self.temperature,
+                    system=system_prompt,
+                    messages=[
+                        {"role": "user", "content": user_prompt}
+                    ]
+                )
+                return response.content[0].text
+                
+            else:
+                raise ValueError(f"No configured client for provider: {self.provider}")
+                
+        except Exception as e:
+            logger.error(f"LLM API call failed: {str(e)}")
+            raise
     
     def generate_tests(self, uncovered_areas: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
@@ -33,8 +87,8 @@ class TestGenerator:
         Returns:
             List of generated test information and code
         """
-        if not self.openai_client:
-            logger.error("OpenAI client not configured - cannot generate tests")
+        if not self._is_client_configured():
+            logger.error(f"LLM client not configured for provider: {self.provider}")
             return []
             
         generated_tests = []
@@ -73,24 +127,8 @@ class TestGenerator:
             prompt = self._create_test_generation_prompt(function_info, source_code)
             
             # Call LLM to generate test
-            response = self.openai_client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {
-                        "role": "system",
-                        "content": self._get_system_prompt(function_info.get("language", "python"))
-                    },
-                    {
-                        "role": "user", 
-                        "content": prompt
-                    }
-                ],
-                max_tokens=self.max_tokens,
-                temperature=self.temperature
-            )
-            
-            # Parse the response
-            test_content = response.choices[0].message.content
+            system_prompt = self._get_system_prompt(function_info.get("language", "python"))
+            test_content = self._call_llm(system_prompt, prompt)
             
             return self._parse_test_response(test_content, function_info)
             
@@ -215,6 +253,11 @@ Always return valid JSON format as requested.
             if content.endswith('```'):
                 content = content[:-3]  # Remove ```
             
+            # Fix triple-quoted strings for JSON compatibility
+            # Replace """ with properly escaped strings
+            import re
+            content = re.sub(r'"""\s*\n(.*?)\n\s*"""', lambda m: json.dumps(m.group(1)), content, flags=re.DOTALL)
+            
             # Parse JSON
             test_data = json.loads(content)
             
@@ -246,18 +289,46 @@ Always return valid JSON format as requested.
         """Fallback parsing when JSON parsing fails."""
         import re
         
-        # Try to extract Python code from markdown code blocks
-        code_blocks = re.findall(r'```python\n(.*?)\n```', response_content, re.DOTALL)
+        # Detect language from function info
+        language = function_info.get("language", "python").lower()
+        
+        # Try to extract code from markdown code blocks for various languages
+        language_patterns = {
+            "python": r'```python\n(.*?)\n```',
+            "java": r'```java\n(.*?)\n```',
+            "javascript": r'```(javascript|js)\n(.*?)\n```',
+            "typescript": r'```(typescript|ts)\n(.*?)\n```',
+        }
+        
+        # Try language-specific pattern first
+        if language in language_patterns:
+            code_blocks = re.findall(language_patterns[language], response_content, re.DOTALL)
+        else:
+            # Fallback to generic code block
+            code_blocks = re.findall(r'```\w*\n(.*?)\n```', response_content, re.DOTALL)
         
         if code_blocks:
-            test_code = code_blocks[0]
+            # Handle tuple results from patterns with groups
+            if isinstance(code_blocks[0], tuple):
+                test_code = code_blocks[0][-1]  # Get the last group (the actual code)
+            else:
+                test_code = code_blocks[0]
             
-            # Extract class name
-            class_match = re.search(r'class\s+(\w+)', test_code)
-            class_name = class_match.group(1) if class_match else f"Test{function_info['function_name'].title()}"
-            
-            # Extract method names
-            method_matches = re.findall(r'def\s+(test_\w+)', test_code)
+            # Language-specific parsing
+            if language == "java":
+                # Extract class name for Java
+                class_match = re.search(r'class\s+(\w+)', test_code)
+                class_name = class_match.group(1) if class_match else f"Test{function_info['function_name'].title()}"
+                
+                # Extract method names for Java
+                method_matches = re.findall(r'@Test\s+public\s+void\s+(\w+)', test_code)
+            else:
+                # Python and other languages
+                class_match = re.search(r'class\s+(\w+)', test_code)
+                class_name = class_match.group(1) if class_match else f"Test{function_info['function_name'].title()}"
+                
+                # Extract method names for Python
+                method_matches = re.findall(r'def\s+(test_\w+)', test_code)
             
             file_path = function_info["file_path"]
             test_file_name = f"test_{file_path.split('/')[-1]}"

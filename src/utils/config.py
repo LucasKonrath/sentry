@@ -17,8 +17,16 @@ class Config(BaseSettings):
     pr_branch_prefix: str = Field("auto-tests/", env="PR_BRANCH_PREFIX")
     pr_title_prefix: str = Field("[Auto] Add unit tests to improve coverage", env="PR_TITLE_PREFIX")
     
-    # OpenAI/LLM Settings
+    # LLM Provider Settings
+    llm_provider: str = Field("openai", env="LLM_PROVIDER")  # openai or claude
+    
+    # OpenAI Settings
     openai_api_key: str = Field("", env="OPENAI_API_KEY")
+    
+    # Claude Settings
+    anthropic_api_key: str = Field("", env="ANTHROPIC_API_KEY")
+    
+    # Common LLM Settings
     llm_model: str = Field("gpt-4", env="LLM_MODEL")
     max_tokens: int = Field(4000, env="MAX_TOKENS")
     temperature: float = Field(0.2, env="TEMPERATURE")
@@ -43,6 +51,9 @@ class Config(BaseSettings):
         "%(asctime)s - %(name)s - %(levelname)s - %(message)s", 
         env="LOG_FORMAT"
     )
+    
+    # Testing Settings
+    local_mode: bool = Field(True, env="LOCAL_MODE")
     
     class Config:
         env_file = ".env"
