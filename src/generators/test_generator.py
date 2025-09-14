@@ -300,6 +300,10 @@ Always return valid JSON format as requested.
     def _parse_test_response(self, response_content: str, function_info: Dict[str, Any]) -> Dict[str, Any]:
         """Parse the LLM response into structured test information."""
         try:
+            logger.info("=== RAW RESPONSE FROM CLAUDE START ===")
+            logger.info(response_content)
+            logger.info("=== RAW RESPONSE FROM CLAUDE END ===")
+            
             # Try to extract JSON from the response
             # Sometimes LLM wraps JSON in markdown code blocks
             content = response_content.strip()
