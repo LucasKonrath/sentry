@@ -46,7 +46,10 @@ class CodeAnalyzer:
             
             # If the file path is relative, prepend SOURCE_ROOT
             if not os.path.isabs(original_file_path):
-                file_path = os.path.abspath(os.path.join(source_root, original_file_path))
+                if original_file_path.startswith(source_root + os.sep) or original_file_path == source_root:
+                    file_path = os.path.abspath(original_file_path)
+                else:
+                    file_path = os.path.abspath(os.path.join(source_root, original_file_path))
             else:
                 file_path = os.path.abspath(original_file_path)
             
@@ -101,7 +104,11 @@ class CodeAnalyzer:
 
             if not os.path.exists(abs_file_path):
                 logger.error(f"File does not exist: {abs_file_path}")
-                return None
+                # Attempt fuzzy resolution (especially for Java where package path may be missing)
+                resolved = self._attempt_resolve_missing_file(abs_file_path)
+                if not resolved:
+                    return None
+                abs_file_path = resolved
 
             analyzer = self.supported_extensions[file_ext]
             return analyzer(abs_file_path)
@@ -352,3 +359,42 @@ class CodeAnalyzer:
         priority += min(deps_count * 5, 25)
         
         return priority
+
+    def _attempt_resolve_missing_file(self, abs_file_path: str) -> Optional[str]:
+        """Try to locate a Java/Python/TS/JS file when the given path is missing.
+
+        For Java coverage (JaCoCo), reports may provide just filename or omit package prefix.
+        Strategy: search common roots for a file with the same basename.
+        """
+        try:
+            basename = os.path.basename(abs_file_path)
+            if not basename:
+                return None
+            # Only attempt for supported code file extensions
+            if Path(basename).suffix not in self.supported_extensions:
+                return None
+            search_roots = [
+                self.config.source_root,
+                'src/main/java',
+                'src',
+                'test-java-project/src/main/java',  # sample project directory
+            ]
+            matches = []
+            for root in search_roots:
+                if not os.path.exists(root):
+                    continue
+                for dirpath, _dirnames, filenames in os.walk(root):
+                    if basename in filenames:
+                        matches.append(os.path.abspath(os.path.join(dirpath, basename)))
+            if not matches:
+                return None
+            if len(matches) == 1:
+                return matches[0]
+            # Heuristic: prefer path with deepest directory (more specific package)
+            matches.sort(key=lambda p: p.count(os.sep), reverse=True)
+            chosen = matches[0]
+            logger.info(f"Fuzzy resolved '{abs_file_path}' -> '{chosen}' from {len(matches)} candidates")
+            return chosen
+        except Exception as e:
+            logger.debug(f"Fuzzy resolution failed for {abs_file_path}: {e}")
+            return None

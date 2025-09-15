@@ -28,6 +28,10 @@ class CoverageAnalyzer:
             total_missed = 0
             total_covered = 0
             for package in root.findall('package'):
+                raw_pkg = package.get('name', '').strip()
+                # JaCoCo uses slash separated package names (e.g. com/example/calculator)
+                # Normalize any dotted form just in case
+                pkg_path = raw_pkg.replace('.', '/').strip('/') if raw_pkg else ''
                 for sourcefile in package.findall('sourcefile'):
                     filename = sourcefile.get('name')
                     missed = 0
@@ -57,7 +61,26 @@ class CoverageAnalyzer:
                     total_covered += covered
                     total_lines = missed + covered
                     percent_covered = (covered / total_lines * 100) if total_lines > 0 else 0
-                    file_coverage[filename] = {
+                    # Build candidate relative paths in order of specificity
+                    candidates = []
+                    if pkg_path:
+                        candidates.append(f"{pkg_path}/{filename}")  # raw package + filename
+                        candidates.append(f"src/main/java/{pkg_path}/{filename}")
+                        candidates.append(f"src/{pkg_path}/{filename}")
+                    candidates.append(f"src/main/java/{filename}")
+                    candidates.append(f"src/{filename}")
+                    candidates.append(filename)
+
+                    chosen = None
+                    for c in candidates:
+                        if os.path.exists(c):
+                            chosen = c
+                            break
+                    if not chosen:
+                        # Prefer most specific constructed path if file not found physically yet
+                        chosen = candidates[0]
+
+                    file_coverage[chosen] = {
                         'missed': missed,
                         'covered': covered,
                         'total': total_lines,
